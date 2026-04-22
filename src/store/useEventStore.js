@@ -29,7 +29,7 @@ const useEventStore = create(
               precos:precos_por_loja(*)
             )
           `)
-          .order('created_at', { ascending: false })
+          .order('criado_em', { ascending: false })
         if (error) { set({ error: error.message, loading: false }); return }
         // Normalizar estrutura
         const eventosNorm = (data || []).map(ev => ({
@@ -71,7 +71,10 @@ const useEventStore = create(
           .single()
         if (error) { set({ error: error.message }); return null }
         const novoEvento = { ...data, parts: [], stores: [] }
-        set(state => ({ eventos: [novoEvento, ...state.eventos], eventoAtivo: data.id }))
+        set(state => ({
+          eventos: [novoEvento, ...state.eventos],
+          eventoAtivo: data.id
+        }))
         return data.id
       },
 
@@ -190,10 +193,21 @@ const useEventStore = create(
           .select()
           .single()
         if (data) {
-          const novaPeca = { id: data.id, name: data.nome, quantity: 1, unit: 'un', prices: {}, selectedStore: null, paymentType: null, status: 'pending' }
+          const novaPeca = {
+            id: data.id,
+            name: data.nome,
+            quantity: 1,
+            unit: 'un',
+            prices: {},
+            selectedStore: null,
+            paymentType: null,
+            status: 'pending'
+          }
           set(state => ({
             eventos: state.eventos.map(ev =>
-              ev.id === eventoId ? { ...ev, parts: [...ev.parts, novaPeca] } : ev
+              ev.id === eventoId
+                ? { ...ev, parts: [...ev.parts, novaPeca] }
+                : ev
             )
           }))
         }
