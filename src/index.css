@@ -2,40 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  --blue: #1a56db;
-  --blue-light: #e8f0fe;
-  --green: #16a34a;
-  --yellow: #ca8a04;
-  --red: #dc2626;
-  --gray: #6b7280;
+  --royal: #2151a1;
+  --royal-dark: #163a7a;
+  --royal-light: #3a6fd8;
+  --royal-pale: #e8f0fc;
+  --accent: #f59e0b;
+  --surface: #f0f4ff;
+  --card: #ffffff;
+  --border: #d1ddf5;
+  --text: #1e2d4f;
+  --muted: #6b7faa;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: #f5f5f0;
+  background: linear-gradient(135deg, #e8f0fc 0%, #f0f4ff 50%, #e8effd 100%);
   min-height: 100vh;
+  color: var(--text);
 }
 
-/* Scrollbar customizado */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #999; }
+::-webkit-scrollbar-track { background: #e8f0fc; }
+::-webkit-scrollbar-thumb { background: #a0b4e0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2151a1; }
 
-/* Inputs de preco sem spinner nativo */
+/* Remove number spinner */
 input[type=number]::-webkit-outer-spin-button,
-input[type=number]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 input[type=number] { -moz-appearance: textfield; }
 
-/* Print styles */
-@media print {
-  .no-print { display: none !important; }
-  body { background: white; }
-  .print-shadow { box-shadow: none !important; }
+/* Table cells - compact */
+.price-cell {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  min-width: 90px;
+  max-width: 110px;
+}
+
+/* Glassmorphism card */
+.glass {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 4px 24px rgba(33,81,161,0.08), 0 1px 4px rgba(33,81,161,0.04);
+}
+
+/* Royal button */
+.btn-royal {
+  background: linear-gradient(135deg, #2151a1, #3a6fd8);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(33,81,161,0.3);
+}
+.btn-royal:hover {
+  background: linear-gradient(135deg, #163a7a, #2151a1);
+  box-shadow: 0 4px 16px rgba(33,81,161,0.45);
+  transform: translateY(-1px);
+}
+
+/* Purchased glow */
+.purchased-cell {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0) !important;
+  color: #065f46 !important;
+  font-weight: 600;
+}
+
+/* Tab active */
+.tab-active {
+  background: white;
+  border-bottom: 2px solid #2151a1;
+  color: #2151a1;
+  font-weight: 600;
+}
+
+/* Input focus royal */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #2151a1 !important;
+  box-shadow: 0 0 0 3px rgba(33,81,161,0.12);
+}
+
+/* Animated shimmer on hover for table rows */
+tbody tr:hover {
+  background: rgba(33,81,161,0.03);
 }
