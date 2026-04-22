@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import TabBar from './components/TabBar'
 import QuotationHeader from './components/QuotationHeader'
 import PasteArea from './components/PasteArea'
@@ -6,7 +6,7 @@ import SpreadsheetTable from './components/SpreadsheetTable'
 import PurchaseModal from './components/PurchaseModal'
 import QuotationCharts from './components/QuotationCharts'
 import ObservationsArea from './components/ObservationsArea'
-import { supabase } from './lib/supabase'
+import ExportModal from './components/ExportModal'
 
 const createEmptyQuotation = (id) => ({
   id,
@@ -23,7 +23,7 @@ export default function App() {
   const [tabs, setTabs] = useState([createEmptyQuotation(Date.now())])
   const [activeTab, setActiveTab] = useState(tabs[0].id)
   const [purchaseModal, setPurchaseModal] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [showExport, setShowExport] = useState(false)
 
   const getActiveQuotation = () => tabs.find(t => t.id === activeTab)
 
@@ -51,9 +51,16 @@ export default function App() {
   }
 
   const handlePasteConvert = (text) => {
+    if (!text.trim()) return
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
     updateQuotation(activeTab, q => ({
       parts: [...q.parts, ...lines.map((name, i) => ({ id: Date.now() + i, name, obs: '' }))]
+    }))
+  }
+
+  const handleTitleDetected = (title) => {
+    updateQuotation(activeTab, q => ({
+      title: title,
     }))
   }
 
@@ -98,7 +105,7 @@ export default function App() {
   const updatePrice = (partId, shopId, value) => {
     const key = `${partId}_${shopId}`
     updateQuotation(activeTab, q => ({
-      prices: { ...q.prices, [key]: { ...q.prices[key], price: value } }
+      prices: { ...q.prices, [key]: { ...(q.prices[key] || {}), price: value } }
     }))
   }
 
@@ -115,7 +122,7 @@ export default function App() {
     if (!purchaseModal) return
     const { key } = purchaseModal
     updateQuotation(activeTab, q => ({
-      prices: { ...q.prices, [key]: { ...q.prices[key], isPurchased: true, paymentMethod } }
+      prices: { ...q.prices, [key]: { ...(q.prices[key] || {}), isPurchased: true, paymentMethod } }
     }))
     setPurchaseModal(null)
   }
@@ -124,7 +131,7 @@ export default function App() {
     if (!purchaseModal) return
     const { key } = purchaseModal
     updateQuotation(activeTab, q => ({
-      prices: { ...q.prices, [key]: { ...q.prices[key], isPurchased: false, paymentMethod: '' } }
+      prices: { ...q.prices, [key]: { ...(q.prices[key] || {}), isPurchased: false, paymentMethod: '' } }
     }))
     setPurchaseModal(null)
   }
@@ -132,15 +139,25 @@ export default function App() {
   const q = getActiveQuotation()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <TabBar tabs={tabs} activeTab={activeTab} onSelectTab={setActiveTab} onAddTab={addTab} onCloseTab={closeTab} />
+    <div className="min-h-screen flex flex-col">
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onAddTab={addTab}
+        onCloseTab={closeTab}
+        onExport={() => setShowExport(true)}
+      />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">
           <QuotationHeader
             quotation={q}
-            onChange={(field, value) => updateQuotation(q.id, qt => ({ [field]: value }))}
+            onChange={(field, value) => updateQuotation(q.id, () => ({ [field]: value }))}
           />
-          <PasteArea onConvert={handlePasteConvert} />
+          <PasteArea
+            onConvert={handlePasteConvert}
+            onTitleDetected={handleTitleDetected}
+          />
           <SpreadsheetTable
             quotation={q}
             onAddPart={addPart}
@@ -155,7 +172,7 @@ export default function App() {
           <QuotationCharts quotation={q} />
           <ObservationsArea
             value={q.observations}
-            onChange={v => updateQuotation(q.id, qt => ({ observations: v }))}
+            onChange={v => updateQuotation(q.id, () => ({ observations: v }))}
           />
         </div>
       )}
@@ -165,6 +182,12 @@ export default function App() {
           onConfirm={confirmPurchase}
           onCancel={cancelPurchase}
           onClose={() => setPurchaseModal(null)}
+        />
+      )}
+      {showExport && q && (
+        <ExportModal
+          quotation={q}
+          onClose={() => setShowExport(false)}
         />
       )}
     </div>
