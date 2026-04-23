@@ -8,6 +8,10 @@ const normalizeLabel = (value = '') =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(esq|esquerda)\b/g, 'esquerdo')
+    .replace(/\b(dir|direita)\b/g, 'direito')
+    .replace(/\btraseira?\b/g, 'traseiro')
+    .replace(/\bdianteira?\b/g, 'dianteiro')
     .trim()
 
 const parseMoney = (raw) => Number(raw.replace(/\./g, '').replace(',', '.'))

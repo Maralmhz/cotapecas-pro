@@ -81,6 +81,44 @@ const getInitialTabs = () => {
   }
 }
 
+const getTokenSimilarity = (left, right) => {
+  if (!left || !right) return 0
+  if (left === right) return 1
+
+  const leftTokens = left.split(' ').filter(Boolean)
+  const rightTokens = right.split(' ').filter(Boolean)
+  const common = leftTokens.filter((token) => rightTokens.includes(token)).length
+  if (common === 0) return 0
+
+  return (2 * common) / (leftTokens.length + rightTokens.length)
+}
+
+const getBestPartMatch = (normalizedParts, targetName) => {
+  let best = null
+  let bestScore = 0
+
+  for (const part of normalizedParts) {
+    if (part.normalized === targetName) return part
+
+    const tokenSimilarity = getTokenSimilarity(part.normalized, targetName)
+    const containsAsIsolatedWord =
+      part.normalized.split(' ').includes(targetName) ||
+      targetName.split(' ').includes(part.normalized)
+
+    let score = tokenSimilarity
+    if (containsAsIsolatedWord && tokenSimilarity < 0.7) {
+      score = Math.min(score, 0.55)
+    }
+
+    if (score > bestScore) {
+      best = part
+      bestScore = score
+    }
+  }
+
+  return bestScore >= 0.7 ? best : null
+}
+
 export default function App() {
   const [tabs, setTabs] = useState(getInitialTabs)
   const [activeTab, setActiveTab] = useState(null)
@@ -172,11 +210,7 @@ export default function App() {
 
       const nextPrices = { ...q.prices }
       for (const item of parsed.items) {
-        const bestPart = normalizedParts.find((part) =>
-          part.normalized === item.normalizedName ||
-          part.normalized.includes(item.normalizedName) ||
-          item.normalizedName.includes(part.normalized),
-        )
+        const bestPart = getBestPartMatch(normalizedParts, item.normalizedName)
         if (!bestPart) continue
         const key = `${bestPart.id}_${shopId}`
         const currentCell = nextPrices[key]
