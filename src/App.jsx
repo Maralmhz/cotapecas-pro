@@ -387,6 +387,7 @@ export default function App() {
         onCloseTab={closeTab}
         onExport={() => setShowExport(true)}
         onChangeView={setActiveView}
+        logoSrc={appLogoSrc}
       />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">
