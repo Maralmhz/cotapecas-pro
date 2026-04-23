@@ -1,21 +1,17 @@
-const BASE = import.meta.env.BASE_URL || '/'
-
 export default function TabBar({ tabs, activeTab, onSelectTab, onAddTab, onCloseTab, onExport }) {
   return (
     <div style={{ background: 'linear-gradient(135deg, #1a3f8f 0%, #2151a1 60%, #1d4ed8 100%)' }}
       className="flex items-stretch shadow-lg select-none">
 
-      {/* Logo */}
       <div className="flex items-center px-3 py-1 border-r border-blue-700/40 flex-shrink-0">
         <img
-          src={`${BASE}logo.png`}
+          src="/logo.png"
           alt="CotaPecas"
           className="h-8 w-auto object-contain"
-          onError={e => { e.target.style.display='none' }}
+          onError={e => { e.target.style.display = 'none' }}
         />
       </div>
 
-      {/* Tabs */}
       <div className="flex items-end flex-1 overflow-x-auto gap-0.5 px-2 pt-2">
         {tabs.map(tab => (
           <div
@@ -47,17 +43,33 @@ export default function TabBar({ tabs, activeTab, onSelectTab, onAddTab, onClose
         >+ Nova</button>
       </div>
 
-      {/* Export button */}
-      <div className="flex items-center px-3 border-l border-blue-700/40">
+      <div className="flex items-center gap-2 px-3 border-l border-blue-700/40">
+        <a
+          href="https://github.com/Maralmhz/cotapecas-pro"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] font-semibold text-blue-100 hover:text-white underline-offset-2 hover:underline"
+        >
+          GitHub
+        </a>
+        <a
+          href="https://supabase.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] font-semibold text-blue-200 hover:text-white underline-offset-2 hover:underline"
+          title="Placeholder Supabase"
+        >
+          Supabase
+        </a>
         <button
           onClick={onExport}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-bold transition-all shadow"
           title="Exportar"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
           Exportar
         </button>
