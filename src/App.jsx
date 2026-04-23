@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard'
 import ObservationsArea from './components/ObservationsArea'
 import ExportModal from './components/ExportModal'
 import Settings from './components/Settings'
+import { normalizePartName, parseParts, parsePrices, parseVehicle } from './lib/parseBudgetText'
 
 const TABS_STORAGE_KEY = 'cotapecas_tabs_v1'
 
@@ -127,18 +128,69 @@ export default function App() {
     })
   }
 
-  const handlePasteConvert = (text) => {
+  const handleBudgetImport = (text, parsedData) => {
     if (!text.trim()) return
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-    updateQuotation(activeTab, q => ({
-      parts: [...q.parts, ...lines.map((name, i) => ({ id: Date.now() + i, name, code: '', quantity: '', obs: '' }))],
-    }))
-  }
+    const parsed = parsedData || {
+      titleLine: parseVehicle(text),
+      parts: parseParts(text),
+      ...parsePrices(text),
+    }
+    const hasPrices = parsed.items && parsed.items.length > 0
 
-  const handleTitleDetected = (title) => {
-    updateQuotation(activeTab, () => ({
-      title,
-    }))
+    if (!hasPrices) {
+      const newQ = createEmptyQuotation(Date.now())
+      const parts = (parsed.parts || []).map((name, i) => ({
+        id: Date.now() + i,
+        name,
+        code: '',
+        quantity: '',
+        obs: '',
+      }))
+      const quotation = {
+        ...newQ,
+        title: parsed.titleLine || newQ.title,
+        parts,
+      }
+      setTabs(prev => [...prev, quotation])
+      setActiveTab(quotation.id)
+      setActiveView('cotacao')
+      return
+    }
+
+    updateQuotation(activeTab, (q) => {
+      const normalizedParts = q.parts.map((part) => ({
+        id: part.id,
+        normalized: normalizePartName(part.name),
+      }))
+
+      let shopId = q.shops.find((shop) => normalizePartName(shop.name) === normalizePartName(parsed.storeName || ''))?.id
+      const shops = [...q.shops]
+      if (!shopId) {
+        shopId = Date.now()
+        shops.push({ id: shopId, name: parsed.storeName || `Loja ${q.shops.length + 1}` })
+      }
+
+      const nextPrices = { ...q.prices }
+      for (const item of parsed.items) {
+        const bestPart = normalizedParts.find((part) =>
+          part.normalized === item.normalizedName ||
+          part.normalized.includes(item.normalizedName) ||
+          item.normalizedName.includes(part.normalized),
+        )
+        if (!bestPart) continue
+        const key = `${bestPart.id}_${shopId}`
+        const currentCell = nextPrices[key]
+        if (!currentCell?.price || item.price < Number(currentCell.price)) {
+          nextPrices[key] = { ...(currentCell || {}), price: item.price }
+        }
+      }
+
+      return {
+        title: parsed.titleLine || q.title,
+        shops,
+        prices: nextPrices,
+      }
+    })
   }
 
   const addPart = () => {
@@ -240,6 +292,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <header className="flex items-center gap-3 p-3 border-b border-slate-200 bg-white">
+        <img src="/logo.png" alt="CotaPeças Pro" className="h-10 w-auto object-contain" />
+      </header>
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
@@ -288,8 +343,7 @@ export default function App() {
                 onChange={(field, value) => updateQuotation(q.id, () => ({ [field]: value }))}
               />
               <PasteArea
-                onConvert={handlePasteConvert}
-                onTitleDetected={handleTitleDetected}
+                onImport={handleBudgetImport}
               />
               <SpreadsheetTable
                 quotation={q}

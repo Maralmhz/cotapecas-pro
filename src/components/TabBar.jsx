@@ -1,7 +1,5 @@
 import { useState } from 'react'
 
-const BASE = import.meta.env.BASE_URL || '/'
-
 export default function TabBar({
   tabs,
   activeTab,
@@ -20,13 +18,6 @@ export default function TabBar({
       className="flex items-stretch shadow-lg select-none relative"
     >
       <div className="w-16 border-r border-blue-700/40 flex flex-col items-center py-2 gap-2 bg-blue-950/20 relative">
-        <img
-          src="/logo.png"
-          alt="CotaPecas"
-          className="h-8 w-8 object-contain"
-          onError={e => { e.currentTarget.style.display = 'none' }}
-        />
-
         <button
           type="button"
           onClick={() => setMenuOpen(prev => !prev)}
@@ -99,23 +90,6 @@ export default function TabBar({
       </div>
 
       <div className="flex items-center gap-2 px-3 border-l border-blue-700/40">
-        <a
-          href="https://github.com/Maralmhz/cotapecas-pro"
-          target="_blank"
-          rel="noreferrer"
-          className="text-[11px] font-semibold text-blue-100 hover:text-white underline-offset-2 hover:underline"
-        >
-          GitHub
-        </a>
-        <a
-          href="https://supabase.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-[11px] font-semibold text-blue-200 hover:text-white underline-offset-2 hover:underline"
-          title="Placeholder Supabase"
-        >
-          Supabase
-        </a>
         <button
           onClick={onExport}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-bold transition-all shadow"
