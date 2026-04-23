@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { forwardRef, useState, useRef, useEffect, useCallback, useImperativeHandle } from 'react'
 
-export default function EditableCell({
+const EditableCell = forwardRef(function EditableCell({
   value,
   onChange,
   className = '',
@@ -9,7 +9,7 @@ export default function EditableCell({
   onTab = null,
   placeholder = '',
   cellId = null,
-}) {
+}, ref) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
   const inputRef = useRef()
@@ -23,6 +23,21 @@ export default function EditableCell({
       inputRef.current.select()
     }
   }, [editing])
+
+  const startEdit = useCallback(() => {
+    setDraft(value ?? '')
+    setEditing(true)
+  }, [value])
+
+  const focusDisplay = useCallback(() => {
+    divRef.current?.focus()
+  }, [])
+
+  useImperativeHandle(ref, () => ({
+    startEdit,
+    focus: focusDisplay,
+    isEditing: () => editing,
+  }), [startEdit, focusDisplay, editing])
 
   const commit = useCallback((callback) => {
     const raw = isMoney
@@ -53,8 +68,7 @@ export default function EditableCell({
   const handleDivKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault()
-      setDraft(value ?? '')
-      setEditing(true)
+      startEdit()
     } else if (e.key === 'Tab') {
       e.preventDefault()
       if (onTab) onTab(e.shiftKey)
@@ -91,7 +105,7 @@ export default function EditableCell({
       ref={divRef}
       tabIndex={0}
       data-cell={cellId}
-      onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+      onClick={startEdit}
       onKeyDown={handleDivKeyDown}
       className={`w-full h-full px-1 py-0 text-xs cursor-pointer hover:bg-blue-50/60 truncate select-none focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:ring-inset ${className}`}
       style={{ minHeight: '22px', lineHeight: '22px' }}
@@ -100,4 +114,6 @@ export default function EditableCell({
       {displayValue() || <span className="text-gray-300 text-xs">{placeholder}</span>}
     </div>
   )
-}
+})
+
+export default EditableCell

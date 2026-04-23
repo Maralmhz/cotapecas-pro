@@ -14,38 +14,69 @@ export default function SpreadsheetTable({
   const { parts, shops, prices } = quotation
   const [editingShop, setEditingShop] = useState(null)
   const [filter, setFilter] = useState('')
-  const tableRef = useRef()
+  const priceCellRefs = useRef({})
 
-  const focusCell = useCallback((partIdx, shopIdx, direction) => {
-    const fp = filter
-      ? parts.filter(p => (p.name || '').toLowerCase().includes(filter.toLowerCase()) || (p.code || '').toLowerCase().includes(filter.toLowerCase()))
-      : parts
-    if (direction === 'enter') {
-      const next = partIdx + 1
-      if (next < fp.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[next].id}_${shops[shopIdx]?.id}"]`)
-        el?.focus(); el?.click()
-      }
-    } else if (direction === 'tab') {
-      const nextS = shopIdx + 1
-      if (nextS < shops.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx].id}_${shops[nextS].id}"]`)
-        el?.focus(); el?.click()
-      } else if (partIdx + 1 < fp.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx + 1].id}_${shops[0]?.id}"]`)
-        el?.focus(); el?.click()
-      }
-    } else if (direction === 'shift-tab') {
-      const prevS = shopIdx - 1
-      if (prevS >= 0) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx].id}_${shops[prevS].id}"]`)
-        el?.focus(); el?.click()
-      }
+  const filteredParts = useMemo(() => {
+    if (!filter.trim()) return parts
+    const q = filter.trim().toLowerCase()
+    return parts.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.code || '').toLowerCase().includes(q)
+    )
+  }, [parts, filter])
+
+  const focusPriceCell = useCallback((partId, shopId, edit = true) => {
+    const key = `${partId}_${shopId}`
+    const cellRef = priceCellRefs.current[key]
+    if (!cellRef) return
+
+    if (edit) {
+      cellRef.startEdit?.()
+      return
     }
-  }, [parts, shops, filter])
+
+    cellRef.focus?.()
+  }, [])
+
+  const focusCell = useCallback((partId, shopIdx, direction) => {
+    const currentRowIdx = filteredParts.findIndex(part => part.id === partId)
+    if (currentRowIdx < 0) return
+
+    if (direction === 'enter') {
+      const nextRow = filteredParts[currentRowIdx + 1]
+      const targetShop = shops[shopIdx]
+      if (nextRow && targetShop) focusPriceCell(nextRow.id, targetShop.id)
+      return
+    }
+
+    if (direction === 'tab') {
+      const nextShop = shops[shopIdx + 1]
+      if (nextShop) {
+        focusPriceCell(filteredParts[currentRowIdx].id, nextShop.id)
+        return
+      }
+
+      const nextRow = filteredParts[currentRowIdx + 1]
+      const firstShop = shops[0]
+      if (nextRow && firstShop) focusPriceCell(nextRow.id, firstShop.id)
+      return
+    }
+
+    if (direction === 'shift-tab') {
+      const prevShop = shops[shopIdx - 1]
+      if (prevShop) {
+        focusPriceCell(filteredParts[currentRowIdx].id, prevShop.id)
+        return
+      }
+
+      const prevRow = filteredParts[currentRowIdx - 1]
+      const lastShop = shops[shops.length - 1]
+      if (prevRow && lastShop) focusPriceCell(prevRow.id, lastShop.id)
+    }
+  }, [filteredParts, shops, focusPriceCell])
 
   const totals = shops.map(shop => {
-    let total = 0, count = 0
+    let total = 0; let count = 0
     parts.forEach(part => {
       const qty = parseFloat(part.quantity) || 1
       const cell = prices[`${part.id}_${shop.id}`]
@@ -73,28 +104,17 @@ export default function SpreadsheetTable({
       return cell?.price ? parseFloat(String(cell.price).replace(',', '.')) : null
     }).filter(v => v !== null && !isNaN(v) && v > 0)
     if (vals.length < 2) return { min: null, max: null, pct: null }
-    const mn = Math.min(...vals), mx = Math.max(...vals)
+    const mn = Math.min(...vals); const mx = Math.max(...vals)
     const pct = mn > 0 ? Math.round(((mx - mn) / mn) * 100) : null
     return { min: mn, max: mx, pct }
   }
-
-  const filteredParts = useMemo(() => {
-    if (!filter.trim()) return parts
-    const q = filter.trim().toLowerCase()
-    return parts.filter(p =>
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.code || '').toLowerCase().includes(q)
-    )
-  }, [parts, filter])
 
   const totalParts = parts.length
   const totalShops = shops.length
   const grandTotal = totals.reduce((acc, t) => acc + t.total, 0)
 
   return (
-    <div className="rounded-lg overflow-hidden border border-blue-200 bg-white shadow-sm" ref={tableRef}>
-
-      {/* Filter Bar */}
+    <div className="rounded-lg overflow-hidden border border-blue-200 bg-white shadow-sm">
       <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border-b border-gray-200">
         <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -161,7 +181,7 @@ export default function SpreadsheetTable({
             </tr>
           </thead>
           <tbody>
-            {filteredParts.map((part, pi) => {
+            {filteredParts.map((part) => {
               const { min, max, pct } = getRowMinMax(part)
               return (
                 <tr
@@ -216,16 +236,20 @@ export default function SpreadsheetTable({
                         style={{ width: '96px' }}
                       >
                         <div className="flex items-center">
-                          <div className="flex-1" data-cell={key}>
+                          <div className="flex-1">
                             <EditableCell
-                              tabIndex={0}
+                              ref={(instance) => {
+                                if (instance) priceCellRefs.current[key] = instance
+                                else delete priceCellRefs.current[key]
+                              }}
+                              cellId={key}
                               value={cell.price || ''}
                               onChange={v => onUpdatePrice(part.id, shop.id, v)}
                               className={isPurch ? 'text-green-700 font-semibold' : isMin ? 'text-emerald-700' : isMax ? 'text-red-600' : 'text-blue-900'}
                               isMoney
                               placeholder="R$"
-                              onEnter={() => focusCell(pi, si, 'enter')}
-                              onTab={(shift) => focusCell(pi, si, shift ? 'shift-tab' : 'tab')}
+                              onEnter={() => focusCell(part.id, si, 'enter')}
+                              onTab={(shift) => focusCell(part.id, si, shift ? 'shift-tab' : 'tab')}
                             />
                           </div>
                           {cell.price && (
@@ -285,7 +309,6 @@ export default function SpreadsheetTable({
         </table>
       </div>
 
-      {/* Status Bar */}
       <div className="flex items-center gap-4 px-3 py-1 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
         <span><span className="font-medium text-gray-700">{totalParts}</span> peças</span>
         <span><span className="font-medium text-gray-700">{totalShops}</span> lojas</span>

@@ -1,115 +1,141 @@
-import useEventStore from '../store/useEventStore'
-import { calcularResumoEvento, formatarBRL } from '../lib/calculations'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-export default function Dashboard() {
-  const eventos = useEventStore(s => s.eventos)
-  const setView = useEventStore(s => s.setView)
-  const setEventoAtivo = useEventStore(s => s.setEventoAtivo)
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
-  // Stats gerais
-  const totalEventos = eventos.length
-  const totalPecas = eventos.reduce((acc, ev) => acc + (ev.parts?.length || 0), 0)
-  const totalGasto = eventos.reduce((acc, ev) => {
-    const r = calcularResumoEvento(ev)
-    return acc + (r.totalComprado || 0)
-  }, 0)
-  const totalEconomizado = eventos.reduce((acc, ev) => {
-    const r = calcularResumoEvento(ev)
-    return acc + (r.economia || 0)
-  }, 0)
+const fmtBRL = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+const parseNumber = (value) => {
+  const parsed = parseFloat(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export default function Dashboard({ tabs = [], onOpenQuotation }) {
+  const quotationSummaries = tabs.map((tab) => {
+    const parts = tab.parts || []
+    const shops = tab.shops || []
+    const prices = tab.prices || {}
+
+    const shopTotals = shops.map((shop) => {
+      const total = parts.reduce((acc, part) => {
+        const key = `${part.id}_${shop.id}`
+        const price = parseNumber(prices[key]?.price)
+        const qty = parseNumber(part.quantity) || 1
+        return acc + (price * qty)
+      }, 0)
+      return { id: shop.id, name: shop.name, total }
+    }).filter((shop) => shop.total > 0)
+
+    const totalQuoted = shopTotals.reduce((acc, shop) => acc + shop.total, 0)
+    const best = shopTotals.reduce((bestShop, current) => {
+      if (!bestShop) return current
+      return current.total < bestShop.total ? current : bestShop
+    }, null)
+    const worst = shopTotals.reduce((worstShop, current) => {
+      if (!worstShop) return current
+      return current.total > worstShop.total ? current : worstShop
+    }, null)
+
+    const savingsPct = best && worst && best.total > 0
+      ? ((worst.total - best.total) / worst.total) * 100
+      : 0
+
+    return {
+      id: tab.id,
+      title: tab.title || 'Sem título',
+      oficina: tab.oficina || '-',
+      totalParts: parts.length,
+      totalQuoted,
+      bestTotal: best?.total || 0,
+      savingsPct,
+    }
+  })
+
+  const totalQuotations = tabs.length
+  const totalParts = quotationSummaries.reduce((acc, tab) => acc + tab.totalParts, 0)
+  const totalQuoted = quotationSummaries.reduce((acc, tab) => acc + tab.totalQuoted, 0)
+  const savingsAverage = quotationSummaries.length
+    ? quotationSummaries.reduce((acc, tab) => acc + tab.savingsPct, 0) / quotationSummaries.length
+    : 0
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Historico completo de {totalEventos} cotacoes</p>
+    <section className="bg-white border border-blue-100 rounded-xl shadow-sm p-4 mb-3 space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard title="Total de cotações" value={totalQuotations} color="text-blue-700" />
+        <KpiCard title="Total de peças" value={totalParts} color="text-violet-700" />
+        <KpiCard title="Valor total cotado" value={fmtBRL(totalQuoted)} color="text-emerald-700" />
+        <KpiCard title="Economia média" value={`${savingsAverage.toFixed(1)}%`} color="text-amber-600" />
       </div>
 
-      {/* Cards resumo */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Eventos', value: totalEventos, color: 'blue', icon: '📋' },
-          { label: 'Total Pecas', value: totalPecas, color: 'purple', icon: '🔧' },
-          { label: 'Total Gasto', value: formatarBRL(totalGasto), color: 'red', icon: '💰' },
-          { label: 'Total Economizado', value: formatarBRL(totalEconomizado), color: 'green', icon: '💚' },
-        ].map(card => (
-          <div key={card.label} className={`bg-white rounded-2xl border p-5 shadow-sm`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{card.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-              </div>
-              <span className="text-2xl">{card.icon}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Lista de eventos */}
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-gray-800">Todos os Eventos</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left p-4 font-semibold text-gray-700">Evento</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Pecas</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Compradas</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Total Gasto</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Melhor Preco</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Economia</th>
-                <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-                <th className="p-4"></th>
+      <div className="rounded-lg border border-slate-200 overflow-hidden">
+        <table className="w-full text-xs sm:text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="text-left px-3 py-2 font-semibold text-slate-600">Cotação</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-600">Oficina</th>
+              <th className="text-center px-3 py-2 font-semibold text-slate-600">Peças</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-600">Total cotado</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-600">Melhor total</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-600">Economia %</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {quotationSummaries.map((tab, index) => (
+              <tr key={tab.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                <td className="px-3 py-2 text-slate-900 font-medium">{tab.title}</td>
+                <td className="px-3 py-2 text-slate-600">{tab.oficina}</td>
+                <td className="px-3 py-2 text-center text-slate-600">{tab.totalParts}</td>
+                <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtBRL(tab.totalQuoted)}</td>
+                <td className="px-3 py-2 text-right text-emerald-700">{fmtBRL(tab.bestTotal)}</td>
+                <td className="px-3 py-2 text-right text-amber-600 font-semibold">{tab.savingsPct.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onOpenQuotation?.(tab.id)}
+                    className="text-[11px] font-semibold bg-blue-600 text-white px-2.5 py-1 rounded-md hover:bg-blue-700"
+                  >
+                    Abrir
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {eventos.map((ev, i) => {
-                const r = calcularResumoEvento(ev)
-                return (
-                  <tr key={ev.id} className={`border-t hover:bg-gray-50 transition ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                    <td className="p-4">
-                      <p className="font-semibold text-gray-900">{ev.nome}</p>
-                      {ev.descricao && <p className="text-xs text-gray-500">{ev.descricao}</p>}
-                      <p className="text-xs text-gray-400 mt-1">{new Date(ev.created_at).toLocaleDateString('pt-BR')}</p>
-                    </td>
-                    <td className="p-4 text-center text-gray-700">{r.totalPecas}</td>
-                    <td className="p-4 text-center">
-                      <span className="text-green-700 font-medium">{r.pecasCompradas}</span>
-                      <span className="text-gray-400">/{r.totalPecas}</span>
-                    </td>
-                    <td className="p-4 text-center font-semibold text-gray-900">{formatarBRL(r.totalComprado)}</td>
-                    <td className="p-4 text-center text-green-700 font-semibold">{formatarBRL(r.totalMelhorPreco)}</td>
-                    <td className="p-4 text-center">
-                      <span className={`font-semibold ${r.economia > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {r.economia > 0 ? `+ ${formatarBRL(r.economia)}` : '-'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        ev.status === 'fechado'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {ev.status === 'fechado' ? 'Fechado' : 'Aberto'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={() => { setEventoAtivo(ev.id); setView('cotacao') }}
-                        className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                      >
-                        Abrir
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {quotationSummaries.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
+                  Nenhuma cotação cadastrada ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
+
+      <div className="h-64 rounded-lg border border-slate-100 p-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={quotationSummaries} margin={{ top: 8, right: 20, left: 4, bottom: 8 }}>
+            <XAxis dataKey="title" tick={{ fontSize: 11 }} tickFormatter={(label) => label.slice(0, 14)} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => `R$${Math.round(value)}`} />
+            <Tooltip
+              cursor={{ fill: '#f1f5f9' }}
+              formatter={(value) => fmtBRL(parseNumber(value))}
+            />
+            <Bar dataKey="totalQuoted" radius={[4, 4, 0, 0]}>
+              {quotationSummaries.map((_, idx) => (
+                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  )
+}
+
+function KpiCard({ title, value, color }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-[11px] uppercase tracking-wide text-slate-500">{title}</p>
+      <p className={`text-xl font-bold ${color}`}>{value}</p>
     </div>
   )
 }
