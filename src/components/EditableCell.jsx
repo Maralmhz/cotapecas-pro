@@ -7,7 +7,8 @@ export default function EditableCell({
   isMoney = false,
   onEnter = null,
   onTab = null,
-  placeholder = ''
+  placeholder = '',
+  tabIndex,
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
@@ -43,6 +44,17 @@ export default function EditableCell({
     }
   }
 
+  const handleCellKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault()
+      setDraft(value)
+      setEditing(true)
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      if (onTab) onTab(e.shiftKey)
+    }
+  }
+
   const displayValue = () => {
     if (!value && value !== 0) return ''
     if (isMoney) {
@@ -70,8 +82,10 @@ export default function EditableCell({
 
   return (
     <div
-      onClick={() => setEditing(true)}
-      className={`w-full h-full px-1 py-0 text-xs cursor-pointer hover:bg-blue-50/60 truncate select-none ${className}`}
+      tabIndex={tabIndex ?? 0}
+      onClick={() => { setDraft(value); setEditing(true) }}
+      onKeyDown={handleCellKeyDown}
+      className={`w-full h-full px-1 py-0 text-xs cursor-pointer hover:bg-blue-50/60 truncate select-none focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:ring-inset ${className}`}
       style={{ minHeight: '22px', lineHeight: '22px' }}
       title={displayValue() || placeholder}
     >
