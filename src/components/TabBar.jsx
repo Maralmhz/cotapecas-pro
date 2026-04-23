@@ -9,6 +9,7 @@ export default function TabBar({
   onExport,
   activeView = 'cotacao',
   onChangeView,
+  logoSrc = `${import.meta.env.BASE_URL}logo.png`,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -19,7 +20,7 @@ export default function TabBar({
     >
       <div className="w-16 border-r border-blue-700/40 flex flex-col items-center py-2 gap-2 bg-blue-950/20 relative">
         <img
-          src="/logo.png"
+          src={logoSrc}
           alt="Logo CotaPeças"
           className="w-10 h-10 object-contain rounded-md bg-white/90 p-1 shadow"
         />
