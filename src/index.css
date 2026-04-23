@@ -99,3 +99,19 @@ input:focus, textarea:focus, select:focus {
 tbody tr:hover {
   background: rgba(33,81,161,0.03);
 }
+
+@media print {
+  body {
+    background: white;
+  }
+
+  button,
+  input {
+    display: none !important;
+  }
+
+  .recharts-wrapper {
+    height: 300px !important;
+    break-inside: avoid;
+  }
+}

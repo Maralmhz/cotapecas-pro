@@ -1,51 +1,88 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import EditableCell from './EditableCell'
 
-const fmtBRL = (v) => {
+const fmtMoney = (v, currency = 'BRL') => {
   const n = parseFloat(String(v).replace(',', '.'))
   if (isNaN(n) || !v) return ''
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return n.toLocaleString('pt-BR', { style: 'currency', currency })
 }
 
 export default function SpreadsheetTable({
   quotation, onAddPart, onRemovePart, onUpdatePart,
-  onAddShop, onRemoveShop, onUpdateShopName, onUpdatePrice, onCellClick
+  onAddShop, onRemoveShop, onUpdateShopName, onUpdatePrice, onCellClick, settings
 }) {
   const { parts, shops, prices } = quotation
   const [editingShop, setEditingShop] = useState(null)
   const [filter, setFilter] = useState('')
-  const tableRef = useRef()
+  const priceCellRefs = useRef({})
 
-  const focusCell = useCallback((partIdx, shopIdx, direction) => {
-    const fp = filter
-      ? parts.filter(p => (p.name || '').toLowerCase().includes(filter.toLowerCase()) || (p.code || '').toLowerCase().includes(filter.toLowerCase()))
-      : parts
-    if (direction === 'enter') {
-      const next = partIdx + 1
-      if (next < fp.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[next].id}_${shops[shopIdx]?.id}"]`)
-        el?.focus(); el?.click()
-      }
-    } else if (direction === 'tab') {
-      const nextS = shopIdx + 1
-      if (nextS < shops.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx].id}_${shops[nextS].id}"]`)
-        el?.focus(); el?.click()
-      } else if (partIdx + 1 < fp.length) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx + 1].id}_${shops[0]?.id}"]`)
-        el?.focus(); el?.click()
-      }
-    } else if (direction === 'shift-tab') {
-      const prevS = shopIdx - 1
-      if (prevS >= 0) {
-        const el = tableRef.current?.querySelector(`[data-cell="${fp[partIdx].id}_${shops[prevS].id}"]`)
-        el?.focus(); el?.click()
-      }
+  const currency = settings?.currency || 'BRL'
+  const showEconomyPercent = settings?.showEconomyPercent ?? true
+  const showCodeColumn = settings?.showCodeColumn ?? true
+  const showQuantityColumn = settings?.showQuantityColumn ?? true
+  const showZeroValues = settings?.showZeroValues ?? true
+
+  const filteredParts = useMemo(() => {
+    if (!filter.trim()) return parts
+    const q = filter.trim().toLowerCase()
+    return parts.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.code || '').toLowerCase().includes(q)
+    )
+  }, [parts, filter])
+
+  const focusPriceCell = useCallback((partId, shopId, edit = true) => {
+    const key = `${partId}_${shopId}`
+    const cellRef = priceCellRefs.current[key]
+    if (!cellRef) return
+
+    if (edit) {
+      cellRef.startEdit?.()
+      return
     }
-  }, [parts, shops, filter])
+
+    cellRef.focus?.()
+  }, [])
+
+  const focusCell = useCallback((partId, shopIdx, direction) => {
+    const currentRowIdx = filteredParts.findIndex(part => part.id === partId)
+    if (currentRowIdx < 0) return
+
+    if (direction === 'enter') {
+      const nextRow = filteredParts[currentRowIdx + 1]
+      const targetShop = shops[shopIdx]
+      if (nextRow && targetShop) focusPriceCell(nextRow.id, targetShop.id)
+      return
+    }
+
+    if (direction === 'tab') {
+      const nextShop = shops[shopIdx + 1]
+      if (nextShop) {
+        focusPriceCell(filteredParts[currentRowIdx].id, nextShop.id)
+        return
+      }
+
+      const nextRow = filteredParts[currentRowIdx + 1]
+      const firstShop = shops[0]
+      if (nextRow && firstShop) focusPriceCell(nextRow.id, firstShop.id)
+      return
+    }
+
+    if (direction === 'shift-tab') {
+      const prevShop = shops[shopIdx - 1]
+      if (prevShop) {
+        focusPriceCell(filteredParts[currentRowIdx].id, prevShop.id)
+        return
+      }
+
+      const prevRow = filteredParts[currentRowIdx - 1]
+      const lastShop = shops[shops.length - 1]
+      if (prevRow && lastShop) focusPriceCell(prevRow.id, lastShop.id)
+    }
+  }, [filteredParts, shops, focusPriceCell])
 
   const totals = shops.map(shop => {
-    let total = 0, count = 0
+    let total = 0; let count = 0
     parts.forEach(part => {
       const qty = parseFloat(part.quantity) || 1
       const cell = prices[`${part.id}_${shop.id}`]
@@ -73,28 +110,17 @@ export default function SpreadsheetTable({
       return cell?.price ? parseFloat(String(cell.price).replace(',', '.')) : null
     }).filter(v => v !== null && !isNaN(v) && v > 0)
     if (vals.length < 2) return { min: null, max: null, pct: null }
-    const mn = Math.min(...vals), mx = Math.max(...vals)
+    const mn = Math.min(...vals); const mx = Math.max(...vals)
     const pct = mn > 0 ? Math.round(((mx - mn) / mn) * 100) : null
     return { min: mn, max: mx, pct }
   }
-
-  const filteredParts = useMemo(() => {
-    if (!filter.trim()) return parts
-    const q = filter.trim().toLowerCase()
-    return parts.filter(p =>
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.code || '').toLowerCase().includes(q)
-    )
-  }, [parts, filter])
 
   const totalParts = parts.length
   const totalShops = shops.length
   const grandTotal = totals.reduce((acc, t) => acc + t.total, 0)
 
   return (
-    <div className="rounded-lg overflow-hidden border border-blue-200 bg-white shadow-sm" ref={tableRef}>
-
-      {/* Filter Bar */}
+    <div className="rounded-lg overflow-hidden border border-blue-200 bg-white shadow-sm">
       <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border-b border-gray-200">
         <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -120,9 +146,9 @@ export default function SpreadsheetTable({
           <thead>
             <tr style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)', height: '28px' }}>
               <th className="text-white/50 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '24px' }}>#</th>
-              <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '52px', fontSize: '10px' }}>CÓD</th>
+              {showCodeColumn && <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '52px', fontSize: '10px' }}>CÓD</th>}
               <th className="text-white font-semibold px-2 text-left border-r border-blue-700/40" style={{ width: '160px' }}>PEÇA</th>
-              <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '36px', fontSize: '10px' }}>QTD</th>
+              {showQuantityColumn && <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '36px', fontSize: '10px' }}>QTD</th>}
               {shops.map((shop, si) => (
                 <th key={shop.id} className="px-1 py-0 border-r border-blue-700/40" style={{ width: '96px' }}>
                   <div className="flex items-center gap-0.5 justify-between group h-7">
@@ -156,12 +182,12 @@ export default function SpreadsheetTable({
               </th>
               <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '60px', fontSize: '10px' }}>MIN</th>
               <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '60px', fontSize: '10px' }}>MAX</th>
-              <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '34px', fontSize: '10px' }}>ECON%</th>
+              {showEconomyPercent && <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '34px', fontSize: '10px' }}>ECON%</th>}
               <th className="text-white/70 font-normal px-1 text-left" style={{ minWidth: '60px', fontSize: '10px' }}>OBS</th>
             </tr>
           </thead>
           <tbody>
-            {filteredParts.map((part, pi) => {
+            {filteredParts.map((part) => {
               const { min, max, pct } = getRowMinMax(part)
               return (
                 <tr
@@ -176,14 +202,14 @@ export default function SpreadsheetTable({
                       className="hidden group-hover/row:flex w-4 h-4 items-center justify-center text-red-400 hover:text-red-600 rounded mx-auto text-xs"
                     >×</button>
                   </td>
-                  <td className="px-0 py-0 border-r border-gray-100" style={{ width: '52px' }}>
+{showCodeColumn &&                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '52px' }}>
                     <EditableCell
                       value={part.code || ''}
                       onChange={v => onUpdatePart(part.id, 'code', v)}
                       className="text-gray-500 font-mono"
                       placeholder="REF"
                     />
-                  </td>
+                  </td>}
                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '160px' }}>
                     <EditableCell
                       value={part.name}
@@ -192,14 +218,14 @@ export default function SpreadsheetTable({
                       placeholder="NOME DA PEÇA"
                     />
                   </td>
-                  <td className="px-0 py-0 border-r border-gray-100" style={{ width: '36px' }}>
+{showQuantityColumn &&                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '36px' }}>
                     <EditableCell
                       value={part.quantity || ''}
                       onChange={v => onUpdatePart(part.id, 'quantity', v)}
                       className="text-center text-gray-700"
                       placeholder="1"
                     />
-                  </td>
+                  </td>}
                   {shops.map((shop, si) => {
                     const key = `${part.id}_${shop.id}`
                     const cell = prices[key] || {}
@@ -216,16 +242,20 @@ export default function SpreadsheetTable({
                         style={{ width: '96px' }}
                       >
                         <div className="flex items-center">
-                          <div className="flex-1" data-cell={key}>
+                          <div className="flex-1">
                             <EditableCell
-                              tabIndex={0}
+                              ref={(instance) => {
+                                if (instance) priceCellRefs.current[key] = instance
+                                else delete priceCellRefs.current[key]
+                              }}
+                              cellId={key}
                               value={cell.price || ''}
                               onChange={v => onUpdatePrice(part.id, shop.id, v)}
                               className={isPurch ? 'text-green-700 font-semibold' : isMin ? 'text-emerald-700' : isMax ? 'text-red-600' : 'text-blue-900'}
                               isMoney
                               placeholder="R$"
-                              onEnter={() => focusCell(pi, si, 'enter')}
-                              onTab={(shift) => focusCell(pi, si, shift ? 'shift-tab' : 'tab')}
+                              onEnter={() => focusCell(part.id, si, 'enter')}
+                              onTab={(shift) => focusCell(part.id, si, shift ? 'shift-tab' : 'tab')}
                             />
                           </div>
                           {cell.price && (
@@ -243,14 +273,14 @@ export default function SpreadsheetTable({
                   })}
                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '46px' }} />
                   <td className="px-1 text-center border-r border-gray-100" style={{ width: '60px', fontSize: '11px' }}>
-                    {min !== null ? <span className="text-emerald-600 font-semibold">{fmtBRL(min)}</span> : ''}
+                    {min !== null ? <span className="text-emerald-600 font-semibold">{fmtMoney(min, currency)}</span> : ''}
                   </td>
                   <td className="px-1 text-center border-r border-gray-100" style={{ width: '60px', fontSize: '11px' }}>
-                    {max !== null ? <span className="text-red-500">{fmtBRL(max)}</span> : ''}
+                    {max !== null ? <span className="text-red-500">{fmtMoney(max, currency)}</span> : ''}
                   </td>
-                  <td className="px-1 text-center border-r border-gray-100" style={{ width: '34px', fontSize: '10px' }}>
+                  {showEconomyPercent && <td className="px-1 text-center border-r border-gray-100" style={{ width: '34px', fontSize: '10px' }}>
                     {pct !== null ? <span className="text-orange-500 font-medium">+{pct}%</span> : ''}
-                  </td>
+                  </td>}
                   <td className="px-0 py-0" style={{ minWidth: '60px' }}>
                     <EditableCell
                       value={part.obs || ''}
@@ -265,7 +295,7 @@ export default function SpreadsheetTable({
           </tbody>
           <tfoot>
             <tr style={{ height: '24px', background: '#f0f4ff' }}>
-              <td colSpan={4} className="border-r border-gray-200">
+              <td colSpan={2 + (showCodeColumn ? 1 : 0) + (showQuantityColumn ? 1 : 0)} className="border-r border-gray-200">
                 <button
                   onClick={onAddPart}
                   className="w-full text-left px-2 py-0 text-blue-500 hover:text-blue-700 font-medium text-xs"
@@ -273,27 +303,26 @@ export default function SpreadsheetTable({
               </td>
               {shops.map((shop, si) => (
                 <td key={shop.id} className={`px-1 text-center border-r border-gray-200 font-semibold text-xs ${si === bestShopIdx && totals[si]?.total > 0 ? 'text-amber-600' : 'text-blue-800'}`}>
-                  {totals[si]?.total > 0 ? fmtBRL(totals[si].total) : ''}
+                  {(showZeroValues || totals[si]?.total > 0) ? fmtMoney(totals[si].total, currency) : ''}
                 </td>
               ))}
               <td className="border-r border-gray-200" />
-              <td colSpan={4} className="px-2 text-xs text-gray-500">
-                {purchasedTotal > 0 && <span className="text-green-600 font-medium">Comprado: {fmtBRL(purchasedTotal)}</span>}
+              <td colSpan={3 + (showEconomyPercent ? 1 : 0)} className="px-2 text-xs text-gray-500">
+                {purchasedTotal > 0 && <span className="text-green-600 font-medium">Comprado: {fmtMoney(purchasedTotal, currency)}</span>}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {/* Status Bar */}
       <div className="flex items-center gap-4 px-3 py-1 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
         <span><span className="font-medium text-gray-700">{totalParts}</span> peças</span>
         <span><span className="font-medium text-gray-700">{totalShops}</span> lojas</span>
-        {grandTotal > 0 && (
-          <span>Total geral: <span className="font-semibold text-blue-700">{fmtBRL(grandTotal)}</span></span>
+        {(showZeroValues || grandTotal > 0) && (
+          <span>Total geral: <span className="font-semibold text-blue-700">{fmtMoney(grandTotal, currency)}</span></span>
         )}
         {purchasedTotal > 0 && (
-          <span>Comprado: <span className="font-semibold text-green-600">{fmtBRL(purchasedTotal)}</span></span>
+          <span>Comprado: <span className="font-semibold text-green-600">{fmtMoney(purchasedTotal, currency)}</span></span>
         )}
         {filter && (
           <span className="ml-auto text-blue-500">Exibindo {filteredParts.length} de {totalParts} peças</span>
