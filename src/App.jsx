@@ -356,7 +356,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex items-center gap-3 p-3 border-b border-slate-200 bg-white">
-        <img src={appLogoSrc} alt="CotaPeças Pro" className="h-10 w-auto object-contain" />
+        <img src={appLogoSrc} alt="CotaPeças Pro" className="h-20 w-auto object-contain" />
       </header>
       <TabBar
         tabs={tabs}
