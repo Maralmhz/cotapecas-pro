@@ -21,7 +21,7 @@ export default function TabBar({
     >
       <div className="w-16 border-r border-blue-700/40 flex flex-col items-center py-2 gap-2 bg-blue-950/20 relative">
         <img
-          src={`${BASE}logo.png`}
+          src="/logo.png"
           alt="CotaPecas"
           className="h-8 w-8 object-contain"
           onError={e => { e.currentTarget.style.display = 'none' }}

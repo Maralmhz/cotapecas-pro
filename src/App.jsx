@@ -38,6 +38,8 @@ const getInitialSettings = () => {
 }
 
 
+const TABS_STORAGE_KEY = 'cotapecas_tabs_v1'
+
 const createEmptyQuotation = (id) => ({
   id,
   title: 'Nova Cotacao',
