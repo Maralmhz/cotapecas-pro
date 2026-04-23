@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export default function EditableCell({
   value,
@@ -8,13 +8,14 @@ export default function EditableCell({
   onEnter = null,
   onTab = null,
   placeholder = '',
-  tabIndex,
+  cellId = null,
 }) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
+  const [draft, setDraft] = useState(value ?? '')
   const inputRef = useRef()
+  const divRef = useRef()
 
-  useEffect(() => { setDraft(value) }, [value])
+  useEffect(() => { setDraft(value ?? '') }, [value])
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -23,32 +24,36 @@ export default function EditableCell({
     }
   }, [editing])
 
-  const commit = () => {
-    const raw = isMoney ? draft.replace(/[^0-9,.]/g, '').replace(',', '.') : draft
+  const commit = useCallback((callback) => {
+    const raw = isMoney
+      ? String(draft).replace(/[^0-9,.]/g, '').replace(',', '.')
+      : String(draft)
     const v = (!isMoney && raw) ? raw.toUpperCase() : raw
-    if (v !== value) onChange(v)
+    if (v !== (value ?? '')) onChange(v)
     setEditing(false)
-  }
+    if (callback) setTimeout(callback, 30)
+  }, [draft, value, onChange, isMoney])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      commit()
-      if (onEnter) onEnter()
+      e.stopPropagation()
+      commit(onEnter)
     } else if (e.key === 'Tab') {
       e.preventDefault()
-      commit()
-      if (onTab) onTab(e.shiftKey)
+      e.stopPropagation()
+      commit(onTab ? () => onTab(e.shiftKey) : null)
     } else if (e.key === 'Escape') {
-      setDraft(value)
+      setDraft(value ?? '')
       setEditing(false)
+      setTimeout(() => divRef.current?.focus(), 30)
     }
   }
 
-  const handleCellKeyDown = (e) => {
+  const handleDivKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault()
-      setDraft(value)
+      setDraft(value ?? '')
       setEditing(true)
     } else if (e.key === 'Tab') {
       e.preventDefault()
@@ -72,20 +77,22 @@ export default function EditableCell({
         ref={inputRef}
         value={draft}
         onChange={e => setDraft(isMoney ? e.target.value : e.target.value.toUpperCase())}
-        onBlur={commit}
+        onBlur={() => commit(null)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={`w-full h-full px-1 py-0 text-xs border-0 outline-none bg-yellow-50 border-b-2 border-blue-500 ${className}`}
-        style={{ minHeight: '22px', lineHeight: '22px' }}
+        style={{ minHeight: '22px', lineHeight: '22px', display: 'block' }}
       />
     )
   }
 
   return (
     <div
-      tabIndex={tabIndex ?? 0}
-      onClick={() => { setDraft(value); setEditing(true) }}
-      onKeyDown={handleCellKeyDown}
+      ref={divRef}
+      tabIndex={0}
+      data-cell={cellId}
+      onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+      onKeyDown={handleDivKeyDown}
       className={`w-full h-full px-1 py-0 text-xs cursor-pointer hover:bg-blue-50/60 truncate select-none focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:ring-inset ${className}`}
       style={{ minHeight: '22px', lineHeight: '22px' }}
       title={displayValue() || placeholder}
