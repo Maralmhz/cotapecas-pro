@@ -119,6 +119,34 @@ const getBestPartMatch = (normalizedParts, targetName) => {
   return bestScore >= 0.7 ? best : null
 }
 
+const DEFAULT_LOGO_SRC = `${import.meta.env.BASE_URL}logo.png`
+
+const normalizeLogoUrl = (logoUrl) => {
+  const value = (logoUrl || '').trim()
+  if (!value) return DEFAULT_LOGO_SRC
+
+  if (value.startsWith('data:')) return value
+
+  try {
+    const parsed = new URL(value)
+    if (parsed.hostname === 'github.com') {
+      const segments = parsed.pathname.split('/').filter(Boolean)
+      const markerIndex = segments.findIndex((part) => part === 'blob' || part === 'tree')
+      if (markerIndex > 1 && markerIndex < segments.length - 1) {
+        const owner = segments[0]
+        const repo = segments[1]
+        const branch = segments[markerIndex + 1]
+        const path = segments.slice(markerIndex + 2).join('/')
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`
+      }
+    }
+  } catch {
+    return value
+  }
+
+  return value
+}
+
 export default function App() {
   const [tabs, setTabs] = useState(getInitialTabs)
   const [activeTab, setActiveTab] = useState(null)
@@ -323,11 +351,12 @@ export default function App() {
   }
 
   const q = getActiveQuotation()
+  const appLogoSrc = normalizeLogoUrl(settings.companyLogo)
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex items-center gap-3 p-3 border-b border-slate-200 bg-white">
-        <img src="/logo.png" alt="CotaPeças Pro" className="h-10 w-auto object-contain" />
+        <img src={appLogoSrc} alt="CotaPeças Pro" className="h-20 w-auto object-contain" />
       </header>
       <TabBar
         tabs={tabs}
@@ -338,6 +367,7 @@ export default function App() {
         onExport={() => setShowExport(true)}
         activeView={activeView}
         onChangeView={setActiveView}
+        logoSrc={appLogoSrc}
       />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">

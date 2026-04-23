@@ -9,53 +9,56 @@ export default function TabBar({
   onExport,
   activeView = 'cotacao',
   onChangeView,
+  logoSrc = `${import.meta.env.BASE_URL}logo.png`,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuExpanded, setMenuExpanded] = useState(false)
+
+  const navItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { key: 'configuracoes', label: 'Configurações', icon: '⚙️' },
+    { key: 'cotacao', label: 'Cotação', icon: '🧾' },
+  ]
 
   return (
     <div
       style={{ background: 'linear-gradient(135deg, #1a3f8f 0%, #2151a1 60%, #1d4ed8 100%)' }}
       className="flex items-stretch shadow-lg select-none relative"
     >
-      <div className="w-16 border-r border-blue-700/40 flex flex-col items-center py-2 gap-2 bg-blue-950/20 relative">
+      <div className={`border-r border-blue-700/40 flex flex-col py-2 gap-2 bg-blue-950/20 relative transition-all ${menuExpanded ? 'w-56 px-2' : 'w-16 items-center'}`}>
+        <img
+          src={logoSrc}
+          alt="Logo CotaPeças"
+          className={`object-contain rounded-md bg-white/90 p-1 shadow ${menuExpanded ? 'w-32 h-16 self-start' : 'w-10 h-10'}`}
+        />
         <button
           type="button"
-          onClick={() => setMenuOpen(prev => !prev)}
-          className="w-9 h-9 rounded-lg bg-blue-800/70 hover:bg-blue-700 text-white flex items-center justify-center"
-          title="Menu"
+          onClick={() => setMenuExpanded(prev => !prev)}
+          className={`h-9 rounded-lg bg-blue-800/70 hover:bg-blue-700 text-white flex items-center transition-all ${menuExpanded ? 'w-full justify-between px-3' : 'w-9 justify-center'}`}
+          title={menuExpanded ? 'Recolher menu' : 'Expandir menu'}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
+          {menuExpanded && <span className="text-xs font-semibold">Recolher</span>}
         </button>
-
-        {menuOpen && (
-          <div className="absolute top-14 left-14 z-20 w-44 rounded-lg bg-white border border-slate-200 shadow-xl overflow-hidden">
+        <div className={`flex flex-col gap-1 ${menuExpanded ? 'w-full' : 'items-center'}`}>
+          {navItems.map((item) => (
             <button
+              key={item.key}
               type="button"
-              onClick={() => { onChangeView?.('dashboard'); setMenuOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${activeView === 'dashboard' ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'}`}
+              onClick={() => onChangeView?.(item.key)}
+              className={`h-9 rounded-lg text-white/90 hover:bg-blue-700/60 transition-all flex items-center ${
+                menuExpanded ? 'w-full px-3 gap-2 justify-start' : 'w-9 justify-center'
+              } ${activeView === item.key ? 'bg-blue-700/80 font-semibold' : 'bg-blue-900/20'}`}
+              title={item.label}
             >
-              Dashboard
+              <span aria-hidden>{item.icon}</span>
+              {menuExpanded && <span className="text-xs">{item.label}</span>}
             </button>
-            <button
-              type="button"
-              onClick={() => { onChangeView?.('configuracoes'); setMenuOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${activeView === 'configuracoes' ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'}`}
-            >
-              Configurações
-            </button>
-            <button
-              type="button"
-              onClick={() => { onChangeView?.('cotacao'); setMenuOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${activeView === 'cotacao' ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'}`}
-            >
-              Cotação
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
 
       <div className="flex items-end flex-1 overflow-x-auto gap-0.5 px-2 pt-2">
