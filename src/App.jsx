@@ -68,14 +68,6 @@ export default function App() {
     if (!activeTab && tabs.length > 0) setActiveTab(tabs[0].id)
   }, [activeTab, tabs])
 
-  useEffect(() => {
-    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
-  }, [tabs])
-
-  useEffect(() => {
-    if (!activeTab && tabs.length > 0) setActiveTab(tabs[0].id)
-  }, [activeTab, tabs])
-
   const getActiveQuotation = () => tabs.find(t => t.id === activeTab)
 
   const updateQuotation = useCallback((id, updater) => {
@@ -206,7 +198,7 @@ export default function App() {
           {activeView === 'dashboard' && (
             <Dashboard
               tabs={tabs}
-              onOpenQuotation={(id) => {
+              onOpenTab={(id) => {
                 setActiveTab(id)
                 setActiveView('cotacao')
               }}
