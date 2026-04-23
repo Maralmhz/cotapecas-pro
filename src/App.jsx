@@ -58,6 +58,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(null)
   const [purchaseModal, setPurchaseModal] = useState(null)
   const [showExport, setShowExport] = useState(false)
+  const [activeView, setActiveView] = useState('cotacao')
+
+  useEffect(() => {
+    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
+  }, [tabs])
+
+  useEffect(() => {
+    if (!activeTab && tabs.length > 0) setActiveTab(tabs[0].id)
+  }, [activeTab, tabs])
 
   useEffect(() => {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
@@ -189,34 +198,58 @@ export default function App() {
         onAddTab={addTab}
         onCloseTab={closeTab}
         onExport={() => setShowExport(true)}
+        activeView={activeView}
+        onChangeView={setActiveView}
       />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">
-          <Dashboard tabs={tabs} onOpenQuotation={setActiveTab} />
-          <QuotationHeader
-            quotation={q}
-            onChange={(field, value) => updateQuotation(q.id, () => ({ [field]: value }))}
-          />
-          <PasteArea
-            onConvert={handlePasteConvert}
-            onTitleDetected={handleTitleDetected}
-          />
-          <SpreadsheetTable
-            quotation={q}
-            onAddPart={addPart}
-            onRemovePart={removePart}
-            onUpdatePart={updatePart}
-            onAddShop={addShop}
-            onRemoveShop={removeShop}
-            onUpdateShopName={updateShopName}
-            onUpdatePrice={updatePrice}
-            onCellClick={handleCellClick}
-          />
-          <QuotationCharts quotation={q} />
-          <ObservationsArea
-            value={q.observations}
-            onChange={v => updateQuotation(q.id, () => ({ observations: v }))}
-          />
+          {activeView === 'dashboard' && (
+            <Dashboard
+              tabs={tabs}
+              onOpenQuotation={(id) => {
+                setActiveTab(id)
+                setActiveView('cotacao')
+              }}
+            />
+          )}
+
+          {activeView === 'configuracoes' && (
+            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 mb-3 space-y-3">
+              <h2 className="text-lg font-semibold text-slate-800">Configurações</h2>
+              <p className="text-sm text-slate-600">
+                Área reservada para configurações gerais do sistema (tema, preferências e integrações).
+              </p>
+            </section>
+          )}
+
+          {activeView === 'cotacao' && (
+            <>
+              <QuotationHeader
+                quotation={q}
+                onChange={(field, value) => updateQuotation(q.id, () => ({ [field]: value }))}
+              />
+              <PasteArea
+                onConvert={handlePasteConvert}
+                onTitleDetected={handleTitleDetected}
+              />
+              <SpreadsheetTable
+                quotation={q}
+                onAddPart={addPart}
+                onRemovePart={removePart}
+                onUpdatePart={updatePart}
+                onAddShop={addShop}
+                onRemoveShop={removeShop}
+                onUpdateShopName={updateShopName}
+                onUpdatePrice={updatePrice}
+                onCellClick={handleCellClick}
+              />
+              <QuotationCharts quotation={q} />
+              <ObservationsArea
+                value={q.observations}
+                onChange={v => updateQuotation(q.id, () => ({ observations: v }))}
+              />
+            </>
+          )}
         </div>
       )}
       {purchaseModal && (
