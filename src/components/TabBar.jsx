@@ -18,6 +18,11 @@ export default function TabBar({
       className="flex items-stretch shadow-lg select-none relative"
     >
       <div className="w-16 border-r border-blue-700/40 flex flex-col items-center py-2 gap-2 bg-blue-950/20 relative">
+        <img
+          src="/logo.png"
+          alt="Logo CotaPeças"
+          className="w-10 h-10 object-contain rounded-md bg-white/90 p-1 shadow"
+        />
         <button
           type="button"
           onClick={() => setMenuOpen(prev => !prev)}
