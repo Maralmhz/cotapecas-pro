@@ -8,6 +8,35 @@ import QuotationCharts from './components/QuotationCharts'
 import Dashboard from './components/Dashboard'
 import ObservationsArea from './components/ObservationsArea'
 import ExportModal from './components/ExportModal'
+import Settings from './components/Settings'
+
+const TABS_STORAGE_KEY = 'cotapecas_tabs_v1'
+
+const SETTINGS_STORAGE_KEY = 'cotapecas_settings_v1'
+
+const defaultSettings = {
+  companyName: '',
+  userName: '',
+  companyLogo: '',
+  theme: 'claro',
+  currency: 'BRL',
+  showZeroValues: true,
+  showEconomyPercent: true,
+  showCodeColumn: true,
+  showQuantityColumn: true,
+}
+
+const getInitialSettings = () => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!raw) return defaultSettings
+    const parsed = JSON.parse(raw)
+    return { ...defaultSettings, ...parsed }
+  } catch {
+    return defaultSettings
+  }
+}
+
 
 const TABS_STORAGE_KEY = 'cotapecas_tabs_v1'
 
@@ -59,10 +88,17 @@ export default function App() {
   const [purchaseModal, setPurchaseModal] = useState(null)
   const [showExport, setShowExport] = useState(false)
   const [activeView, setActiveView] = useState('cotacao')
+  const [settings, setSettings] = useState(getInitialSettings)
+  const [saveMessage, setSaveMessage] = useState('')
 
   useEffect(() => {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
   }, [tabs])
+
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    document.documentElement.classList.toggle('dark', settings.theme === 'escuro')
+  }, [settings])
 
   useEffect(() => {
     if (!activeTab && tabs.length > 0) setActiveTab(tabs[0].id)
@@ -179,6 +215,29 @@ export default function App() {
     setPurchaseModal(null)
   }
 
+  const updateSetting = (field, value) => {
+    setSettings(prev => ({ ...prev, [field]: value }))
+  }
+
+  const saveSettingsNow = () => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    setSaveMessage('Configurações salvas com sucesso')
+    setTimeout(() => setSaveMessage(''), 2000)
+  }
+
+  const resetSettings = () => {
+    setSettings(defaultSettings)
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings))
+    setSaveMessage('Configurações resetadas')
+    setTimeout(() => setSaveMessage(''), 2000)
+  }
+
+  const saveQuotationNow = () => {
+    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
+    setSaveMessage('Cotação salva com sucesso')
+    setTimeout(() => setSaveMessage(''), 2000)
+  }
+
   const q = getActiveQuotation()
 
   return (
@@ -195,6 +254,16 @@ export default function App() {
       />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">
+          <div className="flex items-center justify-end gap-2 mb-2">
+            {saveMessage && <span className="text-xs text-emerald-600 font-medium">{saveMessage}</span>}
+            <button
+              type="button"
+              onClick={saveQuotationNow}
+              className="px-3 py-1.5 text-xs rounded-md bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              Salvar Cotação
+            </button>
+          </div>
           {activeView === 'dashboard' && (
             <Dashboard
               tabs={tabs}
@@ -206,12 +275,12 @@ export default function App() {
           )}
 
           {activeView === 'configuracoes' && (
-            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 mb-3 space-y-3">
-              <h2 className="text-lg font-semibold text-slate-800">Configurações</h2>
-              <p className="text-sm text-slate-600">
-                Área reservada para configurações gerais do sistema (tema, preferências e integrações).
-              </p>
-            </section>
+            <Settings
+              settings={settings}
+              onChange={updateSetting}
+              onSave={saveSettingsNow}
+              onReset={resetSettings}
+            />
           )}
 
           {activeView === 'cotacao' && (
@@ -226,6 +295,7 @@ export default function App() {
               />
               <SpreadsheetTable
                 quotation={q}
+                settings={settings}
                 onAddPart={addPart}
                 onRemovePart={removePart}
                 onUpdatePart={updatePart}

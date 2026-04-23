@@ -1,20 +1,26 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import EditableCell from './EditableCell'
 
-const fmtBRL = (v) => {
+const fmtMoney = (v, currency = 'BRL') => {
   const n = parseFloat(String(v).replace(',', '.'))
   if (isNaN(n) || !v) return ''
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return n.toLocaleString('pt-BR', { style: 'currency', currency })
 }
 
 export default function SpreadsheetTable({
   quotation, onAddPart, onRemovePart, onUpdatePart,
-  onAddShop, onRemoveShop, onUpdateShopName, onUpdatePrice, onCellClick
+  onAddShop, onRemoveShop, onUpdateShopName, onUpdatePrice, onCellClick, settings
 }) {
   const { parts, shops, prices } = quotation
   const [editingShop, setEditingShop] = useState(null)
   const [filter, setFilter] = useState('')
   const priceCellRefs = useRef({})
+
+  const currency = settings?.currency || 'BRL'
+  const showEconomyPercent = settings?.showEconomyPercent ?? true
+  const showCodeColumn = settings?.showCodeColumn ?? true
+  const showQuantityColumn = settings?.showQuantityColumn ?? true
+  const showZeroValues = settings?.showZeroValues ?? true
 
   const filteredParts = useMemo(() => {
     if (!filter.trim()) return parts
@@ -140,9 +146,9 @@ export default function SpreadsheetTable({
           <thead>
             <tr style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)', height: '28px' }}>
               <th className="text-white/50 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '24px' }}>#</th>
-              <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '52px', fontSize: '10px' }}>CÓD</th>
+              {showCodeColumn && <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '52px', fontSize: '10px' }}>CÓD</th>}
               <th className="text-white font-semibold px-2 text-left border-r border-blue-700/40" style={{ width: '160px' }}>PEÇA</th>
-              <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '36px', fontSize: '10px' }}>QTD</th>
+              {showQuantityColumn && <th className="text-white/60 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '36px', fontSize: '10px' }}>QTD</th>}
               {shops.map((shop, si) => (
                 <th key={shop.id} className="px-1 py-0 border-r border-blue-700/40" style={{ width: '96px' }}>
                   <div className="flex items-center gap-0.5 justify-between group h-7">
@@ -176,7 +182,7 @@ export default function SpreadsheetTable({
               </th>
               <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '60px', fontSize: '10px' }}>MIN</th>
               <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '60px', fontSize: '10px' }}>MAX</th>
-              <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '34px', fontSize: '10px' }}>ECON%</th>
+              {showEconomyPercent && <th className="text-white/70 font-normal px-1 text-center border-r border-blue-700/40" style={{ width: '34px', fontSize: '10px' }}>ECON%</th>}
               <th className="text-white/70 font-normal px-1 text-left" style={{ minWidth: '60px', fontSize: '10px' }}>OBS</th>
             </tr>
           </thead>
@@ -196,14 +202,14 @@ export default function SpreadsheetTable({
                       className="hidden group-hover/row:flex w-4 h-4 items-center justify-center text-red-400 hover:text-red-600 rounded mx-auto text-xs"
                     >×</button>
                   </td>
-                  <td className="px-0 py-0 border-r border-gray-100" style={{ width: '52px' }}>
+{showCodeColumn &&                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '52px' }}>
                     <EditableCell
                       value={part.code || ''}
                       onChange={v => onUpdatePart(part.id, 'code', v)}
                       className="text-gray-500 font-mono"
                       placeholder="REF"
                     />
-                  </td>
+                  </td>}
                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '160px' }}>
                     <EditableCell
                       value={part.name}
@@ -212,14 +218,14 @@ export default function SpreadsheetTable({
                       placeholder="NOME DA PEÇA"
                     />
                   </td>
-                  <td className="px-0 py-0 border-r border-gray-100" style={{ width: '36px' }}>
+{showQuantityColumn &&                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '36px' }}>
                     <EditableCell
                       value={part.quantity || ''}
                       onChange={v => onUpdatePart(part.id, 'quantity', v)}
                       className="text-center text-gray-700"
                       placeholder="1"
                     />
-                  </td>
+                  </td>}
                   {shops.map((shop, si) => {
                     const key = `${part.id}_${shop.id}`
                     const cell = prices[key] || {}
@@ -267,14 +273,14 @@ export default function SpreadsheetTable({
                   })}
                   <td className="px-0 py-0 border-r border-gray-100" style={{ width: '46px' }} />
                   <td className="px-1 text-center border-r border-gray-100" style={{ width: '60px', fontSize: '11px' }}>
-                    {min !== null ? <span className="text-emerald-600 font-semibold">{fmtBRL(min)}</span> : ''}
+                    {min !== null ? <span className="text-emerald-600 font-semibold">{fmtMoney(min, currency)}</span> : ''}
                   </td>
                   <td className="px-1 text-center border-r border-gray-100" style={{ width: '60px', fontSize: '11px' }}>
-                    {max !== null ? <span className="text-red-500">{fmtBRL(max)}</span> : ''}
+                    {max !== null ? <span className="text-red-500">{fmtMoney(max, currency)}</span> : ''}
                   </td>
-                  <td className="px-1 text-center border-r border-gray-100" style={{ width: '34px', fontSize: '10px' }}>
+                  {showEconomyPercent && <td className="px-1 text-center border-r border-gray-100" style={{ width: '34px', fontSize: '10px' }}>
                     {pct !== null ? <span className="text-orange-500 font-medium">+{pct}%</span> : ''}
-                  </td>
+                  </td>}
                   <td className="px-0 py-0" style={{ minWidth: '60px' }}>
                     <EditableCell
                       value={part.obs || ''}
@@ -289,7 +295,7 @@ export default function SpreadsheetTable({
           </tbody>
           <tfoot>
             <tr style={{ height: '24px', background: '#f0f4ff' }}>
-              <td colSpan={4} className="border-r border-gray-200">
+              <td colSpan={2 + (showCodeColumn ? 1 : 0) + (showQuantityColumn ? 1 : 0)} className="border-r border-gray-200">
                 <button
                   onClick={onAddPart}
                   className="w-full text-left px-2 py-0 text-blue-500 hover:text-blue-700 font-medium text-xs"
@@ -297,12 +303,12 @@ export default function SpreadsheetTable({
               </td>
               {shops.map((shop, si) => (
                 <td key={shop.id} className={`px-1 text-center border-r border-gray-200 font-semibold text-xs ${si === bestShopIdx && totals[si]?.total > 0 ? 'text-amber-600' : 'text-blue-800'}`}>
-                  {totals[si]?.total > 0 ? fmtBRL(totals[si].total) : ''}
+                  {(showZeroValues || totals[si]?.total > 0) ? fmtMoney(totals[si].total, currency) : ''}
                 </td>
               ))}
               <td className="border-r border-gray-200" />
-              <td colSpan={4} className="px-2 text-xs text-gray-500">
-                {purchasedTotal > 0 && <span className="text-green-600 font-medium">Comprado: {fmtBRL(purchasedTotal)}</span>}
+              <td colSpan={3 + (showEconomyPercent ? 1 : 0)} className="px-2 text-xs text-gray-500">
+                {purchasedTotal > 0 && <span className="text-green-600 font-medium">Comprado: {fmtMoney(purchasedTotal, currency)}</span>}
               </td>
             </tr>
           </tfoot>
@@ -312,11 +318,11 @@ export default function SpreadsheetTable({
       <div className="flex items-center gap-4 px-3 py-1 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
         <span><span className="font-medium text-gray-700">{totalParts}</span> peças</span>
         <span><span className="font-medium text-gray-700">{totalShops}</span> lojas</span>
-        {grandTotal > 0 && (
-          <span>Total geral: <span className="font-semibold text-blue-700">{fmtBRL(grandTotal)}</span></span>
+        {(showZeroValues || grandTotal > 0) && (
+          <span>Total geral: <span className="font-semibold text-blue-700">{fmtMoney(grandTotal, currency)}</span></span>
         )}
         {purchasedTotal > 0 && (
-          <span>Comprado: <span className="font-semibold text-green-600">{fmtBRL(purchasedTotal)}</span></span>
+          <span>Comprado: <span className="font-semibold text-green-600">{fmtMoney(purchasedTotal, currency)}</span></span>
         )}
         {filter && (
           <span className="ml-auto text-blue-500">Exibindo {filteredParts.length} de {totalParts} peças</span>
