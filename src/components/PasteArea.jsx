@@ -1,31 +1,17 @@
 import { useState } from 'react'
+import { parseParts, parsePrices, parseVehicle } from '../lib/parseBudgetText'
 
-// Heuristic to detect if a line is a vehicle identification line (not a part)
-// Matches patterns like: HB20 2023, COROLLA 2022, ONIX PLUS, plate patterns, chassis numbers
-const VEHICLE_PATTERN = /\b(20[0-9]{2}|19[89][0-9])\b|\b[A-Z]{3}[0-9][A-Z0-9][0-9]{2}\b|\b[A-Z0-9]{17}\b/i
-const CAR_BRANDS = /\b(CHEVROLET|GM|FIAT|FORD|VOLKSWAGEN|VW|HONDA|TOYOTA|HYUNDAI|KIA|NISSAN|RENAULT|PEUGEOT|CITROEN|MITSUBISHI|JEEP|DODGE|SUZUKI|CHERY|JAC|BYD|HB20|ONIX|COROLLA|CIVIC|PALIO|GOLO|POLO|GOL|SIENA|STRADA|HILUX|KWID|ARGO|CRETA|TUCSON|COMPASS|RENEGADE|RANGER|DUSTER)\b/i
-
-function isVehicleLine(line) {
-  return VEHICLE_PATTERN.test(line) || CAR_BRANDS.test(line)
-}
-
-export default function PasteArea({ onConvert, onTitleDetected }) {
+export default function PasteArea({ onImport }) {
   const [text, setText] = useState('')
   const [preview, setPreview] = useState(null)
 
   const analyze = (raw) => {
-    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
-    let titleLine = null
-    const parts = []
-    for (const line of lines) {
-      if (!titleLine && isVehicleLine(line)) {
-        titleLine = line
-      } else {
-        parts.push(line)
-      }
-    }
-    setPreview({ titleLine, partsCount: parts.length })
-    return { titleLine, parts }
+    const titleLine = parseVehicle(raw)
+    const parts = parseParts(raw)
+    const { storeName, items } = parsePrices(raw)
+    const hasPrices = items.length > 0
+    setPreview({ titleLine, partsCount: parts.length, hasPrices, storeName, pricesCount: items.length })
+    return { titleLine, parts, storeName, items, hasPrices }
   }
 
   const handleChange = (val) => {
@@ -34,11 +20,10 @@ export default function PasteArea({ onConvert, onTitleDetected }) {
     else setPreview(null)
   }
 
-  const handleConvert = () => {
+  const handleImport = () => {
     if (!text.trim()) return
-    const { titleLine, parts } = analyze(text)
-    if (titleLine && onTitleDetected) onTitleDetected(titleLine)
-    onConvert(parts.join('\n'))
+    const parsed = analyze(text)
+    onImport?.(text, parsed)
     setText('')
     setPreview(null)
   }
@@ -68,14 +53,16 @@ export default function PasteArea({ onConvert, onTitleDetected }) {
             </span>
           )}
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-            {preview.partsCount} peca(s) para adicionar
+            {preview.hasPrices
+              ? `${preview.pricesCount} preço(s) para importar${preview.storeName ? ` • loja: ${preview.storeName}` : ''}`
+              : `${preview.partsCount} peca(s) para adicionar`}
           </span>
         </div>
       )}
 
       <div className="flex gap-2 mt-3">
         <button
-          onClick={handleConvert}
+          onClick={handleImport}
           className="btn-royal flex items-center gap-2"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -86,7 +73,7 @@ export default function PasteArea({ onConvert, onTitleDetected }) {
             <line x1="3" y1="12" x2="3.01" y2="12"/>
             <line x1="3" y1="18" x2="3.01" y2="18"/>
           </svg>
-          Converter em Planilha
+          Importar orçamento
         </button>
         <button
           onClick={() => { setText(''); setPreview(null) }}
