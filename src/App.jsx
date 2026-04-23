@@ -352,11 +352,32 @@ export default function App() {
 
   const q = getActiveQuotation()
   const appLogoSrc = normalizeLogoUrl(settings.companyLogo)
+  const topMenuItems = [
+    { key: 'cotacao', label: 'Cotação' },
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'configuracoes', label: 'Configurações' },
+  ]
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex items-center gap-3 p-3 border-b border-slate-200 bg-white">
+      <header className="flex items-center justify-between gap-4 p-3 border-b border-slate-200 bg-white">
         <img src={appLogoSrc} alt="CotaPeças Pro" className="h-20 w-auto object-contain" />
+        <nav className="flex items-center gap-2">
+          {topMenuItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveView(item.key)}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeView === item.key
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </header>
       <TabBar
         tabs={tabs}
@@ -365,7 +386,6 @@ export default function App() {
         onAddTab={addTab}
         onCloseTab={closeTab}
         onExport={() => setShowExport(true)}
-        activeView={activeView}
         onChangeView={setActiveView}
         logoSrc={appLogoSrc}
       />
