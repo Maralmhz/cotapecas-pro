@@ -128,6 +128,12 @@ export default function PasteArea({ onImport, onImportSpreadsheet }) {
           Subir planilha
         </button>
         <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg hover:bg-blue-200 font-medium transition-all"
+        >
+          Subir planilha
+        </button>
+        <button
           onClick={() => { setText(''); setPreview(null) }}
           className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium transition-all"
         >Limpar</button>

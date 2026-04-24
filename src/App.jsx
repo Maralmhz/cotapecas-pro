@@ -32,6 +32,7 @@ const getInitialSettings = () => {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
     if (!raw) return defaultSettings
     const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaultSettings
     return { ...defaultSettings, ...parsed }
   } catch {
     return defaultSettings
@@ -122,7 +123,7 @@ const getBestPartMatch = (normalizedParts, targetName) => {
 const DEFAULT_LOGO_SRC = `${import.meta.env.BASE_URL}logo.png`
 
 const normalizeLogoUrl = (logoUrl) => {
-  const value = (logoUrl || '').trim()
+  const value = typeof logoUrl === 'string' ? logoUrl.trim() : ''
   if (!value) return DEFAULT_LOGO_SRC
 
   if (value.startsWith('data:')) return value

@@ -27,6 +27,25 @@ class AppErrorBoundary extends React.Component {
               Tente atualizar o navegador. Se o problema continuar, limpe os dados salvos do site
               (localStorage) e abra novamente.
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.clear()
+                window.location.reload()
+              }}
+              style={{
+                marginTop: 12,
+                border: 0,
+                background: '#1d4ed8',
+                color: '#fff',
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Limpar dados e recarregar
+            </button>
           </div>
         </div>
       )
