@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function QuotationHeader({ quotation, onChange }) {
   const fileRef = useRef()
@@ -36,6 +36,24 @@ export default function QuotationHeader({ quotation, onChange }) {
       }
     }
   }
+
+  useEffect(() => {
+    const onWindowPaste = (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          loadImage(item.getAsFile())
+          e.preventDefault()
+          return
+        }
+      }
+    }
+
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [])
 
   return (
     <div

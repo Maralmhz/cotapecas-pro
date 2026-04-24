@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { parseParts, parsePrices, parseVehicle } from '../lib/parseBudgetText'
 import { parseSpreadsheetHtml, parseSpreadsheetTextGrid } from '../lib/parseSpreadsheetPaste'
 
 export default function PasteArea({ onImport, onImportSpreadsheet }) {
   const [text, setText] = useState('')
   const [preview, setPreview] = useState(null)
-  const [sheetMsg, setSheetMsg] = useState('')
+  const fileRef = useRef(null)
 
   const analyze = (raw) => {
     const titleLine = parseVehicle(raw)
@@ -30,44 +30,22 @@ export default function PasteArea({ onImport, onImportSpreadsheet }) {
     setPreview(null)
   }
 
-  const applySpreadsheetImport = (parsed) => {
-    if (!parsed) {
-      setSheetMsg('Não consegui interpretar o layout da planilha. Tente copiar a tabela completa.')
+  const handleFileUpload = (file) => {
+    if (!file) return
+    const lowerName = file.name.toLowerCase()
+    if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+      alert('Arquivo XLS/XLSX ainda não é suportado. Exporte a planilha como CSV e tente novamente.')
       return
     }
-    onImportSpreadsheet?.(parsed)
-    setSheetMsg(`Planilha reconhecida: ${parsed.parts.length} peças e ${parsed.shops.length} lojas.`)
-    setTimeout(() => setSheetMsg(''), 3000)
-  }
 
-  const handlePaste = (event) => {
-    const html = event.clipboardData?.getData('text/html')
-    if (html) {
-      const parsedHtml = parseSpreadsheetHtml(html)
-      if (parsedHtml) {
-        event.preventDefault()
-        applySpreadsheetImport(parsedHtml)
-        return
-      }
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const raw = String(event.target?.result || '')
+      setText(raw)
+      if (raw.trim()) analyze(raw)
+      else setPreview(null)
     }
-
-    const rawText = event.clipboardData?.getData('text/plain')
-    if (rawText?.includes('\t')) {
-      const parsedText = parseSpreadsheetTextGrid(rawText)
-      if (parsedText) {
-        event.preventDefault()
-        applySpreadsheetImport(parsedText)
-      }
-    }
-  }
-
-  const handleFile = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const raw = await file.text()
-    const parsed = parseSpreadsheetTextGrid(raw)
-    applySpreadsheetImport(parsed)
-    event.target.value = ''
+    reader.readAsText(file, 'utf-8')
   }
 
   return (
@@ -103,7 +81,14 @@ export default function PasteArea({ onImport, onImportSpreadsheet }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mt-3">
+      <div className="flex gap-2 mt-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.txt,.tsv,.xls,.xlsx"
+          className="hidden"
+          onChange={(e) => handleFileUpload(e.target.files?.[0])}
+        />
         <button
           onClick={handleImport}
           className="btn-royal flex items-center gap-2"
@@ -125,7 +110,13 @@ export default function PasteArea({ onImport, onImportSpreadsheet }) {
         </label>
 
         <button
-          onClick={() => { setText(''); setPreview(null); setSheetMsg('') }}
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg hover:bg-blue-200 font-medium transition-all"
+        >
+          Subir planilha
+        </button>
+        <button
+          onClick={() => { setText(''); setPreview(null) }}
           className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium transition-all"
         >Limpar</button>
       </div>
