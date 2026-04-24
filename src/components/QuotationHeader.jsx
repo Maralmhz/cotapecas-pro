@@ -1,15 +1,15 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export default function QuotationHeader({ quotation, onChange }) {
   const fileRef = useRef()
   const [dragging, setDragging] = useState(false)
 
-  const loadImage = (file) => {
+  const loadImage = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return
     const reader = new FileReader()
     reader.onload = (ev) => onChange('vehiclePhoto', ev.target.result)
     reader.readAsDataURL(file)
-  }
+  }, [onChange])
 
   const handlePhoto = (e) => loadImage(e.target.files[0])
 
@@ -25,23 +25,26 @@ export default function QuotationHeader({ quotation, onChange }) {
     }
   }
 
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        loadImage(item.getAsFile())
-        e.preventDefault()
-        return
+  useEffect(() => {
+    const onWindowPaste = (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          loadImage(item.getAsFile())
+          e.preventDefault()
+          return
+        }
       }
     }
-  }
+
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [loadImage])
 
   return (
-    <div
-      className="glass rounded-xl mb-4 p-4 flex gap-4 items-start"
-      onPaste={handlePaste}
-    >
+    <div className="glass rounded-xl mb-4 p-4 flex gap-4 items-start">
       {/* Photo area - drag, paste, click, or file */}
       <div
         className={`relative flex-shrink-0 w-28 h-20 rounded-xl border-2 border-dashed transition-all cursor-pointer overflow-hidden group ${

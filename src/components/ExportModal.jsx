@@ -24,12 +24,28 @@ export default function ExportModal({ quotation, onClose }) {
       return total > 0 ? total.toFixed(2).replace('.', ',') : ''
     }), '']
 
+    const shopTotals = shops.map((shop) => {
+      const total = parts.reduce((acc, p) => {
+        const cell = prices[`${p.id}_${shop.id}`]
+        return acc + (cell?.price ? parseFloat(cell.price) : 0)
+      }, 0)
+      return { name: shop.name, total }
+    })
+    const maxTotal = Math.max(...shopTotals.map(item => item.total), 0)
+
     const csvLines = [
       `"${quotation.oficina ? quotation.oficina + ' | ' : ''}${quotation.title}"`,
       '',
       header.join(';'),
       ...rows.map(r => r.join(';')),
-      totalsRow.join(';')
+      totalsRow.join(';'),
+      '',
+      'GRAFICO - TOTAL POR LOJA',
+      'Loja;Total;Percentual',
+      ...shopTotals.map((item) => {
+        const percent = maxTotal > 0 ? ((item.total / maxTotal) * 100).toFixed(1) : '0.0'
+        return `"${item.name}";${item.total.toFixed(2).replace('.', ',')};${percent}%`
+      }),
     ]
     const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -142,5 +158,18 @@ function buildPrintHTML(q) {
     const t = parts.reduce((acc,p)=>{ const c=prices[`${p.id}_${s.id}`]; return acc+(c?.price?parseFloat(c.price):0) },0)
     return `<td style="padding:6px 10px;text-align:right;font-weight:bold;background:#e8f0fc">${t>0?fmtBRL(t):''}</td>`
   }).join('')
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cotacao</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:20px}table{border-collapse:collapse;width:100%}@media print{body{margin:0}}</style></head><body><h2 style="color:#1e3a8a;margin-bottom:4px">${q.oficina?`${q.oficina} &mdash; `:''} ${q.title}</h2><p style="color:#666;margin-bottom:16px;font-size:13px">Cotacao de Pecas Automotivas</p><table><thead><tr><th style="background:#1e3a8a;color:#fff;padding:6px 10px">#</th><th style="background:#1e3a8a;color:#fff;padding:6px 10px;text-align:left">Peca</th>${shopCols}<th style="background:#1e3a8a;color:#fff;padding:6px 10px">OBS</th></tr></thead><tbody>${partRows}<tr><td colspan="2" style="padding:6px 10px;font-weight:bold;background:#e8f0fc">TOTAL</td>${totCells}<td style="background:#e8f0fc"></td></tr></tbody></table></body></html>`
+  const shopTotals = shops.map((shop) => {
+    const total = parts.reduce((acc, p) => {
+      const c = prices[`${p.id}_${shop.id}`]
+      return acc + (c?.price ? parseFloat(c.price) : 0)
+    }, 0)
+    return { name: shop.name, total }
+  })
+  const maxTotal = Math.max(...shopTotals.map(item => item.total), 0)
+  const chartRows = shopTotals.map((item) => {
+    const width = maxTotal > 0 ? Math.max(4, (item.total / maxTotal) * 100) : 4
+    return `<div style="margin:8px 0"><div style="font-size:12px;color:#334155;margin-bottom:4px">${item.name} — <strong>${fmtBRL(item.total)}</strong></div><div style="height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden"><div style="height:100%;width:${width}%;background:linear-gradient(90deg,#1d4ed8,#3b82f6)"></div></div></div>`
+  }).join('')
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cotacao</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:20px}table{border-collapse:collapse;width:100%}@media print{body{margin:0}}.section-title{margin:18px 0 8px;color:#1e3a8a;font-size:16px;font-weight:700}</style></head><body><h2 style="color:#1e3a8a;margin-bottom:4px">${q.oficina?`${q.oficina} &mdash; `:''} ${q.title}</h2><p style="color:#666;margin-bottom:16px;font-size:13px">Cotacao de Pecas Automotivas</p><table><thead><tr><th style="background:#1e3a8a;color:#fff;padding:6px 10px">#</th><th style="background:#1e3a8a;color:#fff;padding:6px 10px;text-align:left">Peca</th>${shopCols}<th style="background:#1e3a8a;color:#fff;padding:6px 10px">OBS</th></tr></thead><tbody>${partRows}<tr><td colspan="2" style="padding:6px 10px;font-weight:bold;background:#e8f0fc">TOTAL</td>${totCells}<td style="background:#e8f0fc"></td></tr></tbody></table><h3 class="section-title">Gráfico de totais por loja</h3><div>${chartRows || '<p style="color:#64748b;font-size:12px">Sem dados para o gráfico.</p>'}</div></body></html>`
 }
