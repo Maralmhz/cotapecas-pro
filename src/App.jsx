@@ -119,6 +119,34 @@ const getBestPartMatch = (normalizedParts, targetName) => {
   return bestScore >= 0.7 ? best : null
 }
 
+const DEFAULT_LOGO_SRC = `${import.meta.env.BASE_URL}logo.png`
+
+const normalizeLogoUrl = (logoUrl) => {
+  const value = (logoUrl || '').trim()
+  if (!value) return DEFAULT_LOGO_SRC
+
+  if (value.startsWith('data:')) return value
+
+  try {
+    const parsed = new URL(value)
+    if (parsed.hostname === 'github.com') {
+      const segments = parsed.pathname.split('/').filter(Boolean)
+      const markerIndex = segments.findIndex((part) => part === 'blob' || part === 'tree')
+      if (markerIndex > 1 && markerIndex < segments.length - 1) {
+        const owner = segments[0]
+        const repo = segments[1]
+        const branch = segments[markerIndex + 1]
+        const path = segments.slice(markerIndex + 2).join('/')
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`
+      }
+    }
+  } catch {
+    return value
+  }
+
+  return value
+}
+
 export default function App() {
   const [tabs, setTabs] = useState(getInitialTabs)
   const [activeTab, setActiveTab] = useState(null)
@@ -323,11 +351,33 @@ export default function App() {
   }
 
   const q = getActiveQuotation()
+  const appLogoSrc = normalizeLogoUrl(settings.companyLogo)
+  const topMenuItems = [
+    { key: 'cotacao', label: 'Cotação' },
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'configuracoes', label: 'Configurações' },
+  ]
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex items-center gap-3 p-3 border-b border-slate-200 bg-white">
-        <img src="/logo.png" alt="CotaPeças Pro" className="h-10 w-auto object-contain" />
+      <header className="flex items-center justify-between gap-4 p-3 border-b border-slate-200 bg-white">
+        <img src={appLogoSrc} alt="CotaPeças Pro" className="h-20 w-auto object-contain" />
+        <nav className="flex items-center gap-2">
+          {topMenuItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveView(item.key)}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeView === item.key
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </header>
       <TabBar
         tabs={tabs}
@@ -336,7 +386,6 @@ export default function App() {
         onAddTab={addTab}
         onCloseTab={closeTab}
         onExport={() => setShowExport(true)}
-        activeView={activeView}
         onChangeView={setActiveView}
       />
       {q && (
