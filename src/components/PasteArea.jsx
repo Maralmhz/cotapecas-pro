@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { parseParts, parsePrices, parseVehicle } from '../lib/parseBudgetText'
+import { parseSpreadsheetHtml, parseSpreadsheetTextGrid } from '../lib/parseSpreadsheetPaste'
 
-export default function PasteArea({ onImport }) {
+export default function PasteArea({ onImport, onImportSpreadsheet }) {
   const [text, setText] = useState('')
   const [preview, setPreview] = useState(null)
   const fileRef = useRef(null)
@@ -60,6 +61,7 @@ export default function PasteArea({ onImport }) {
         className="w-full border border-blue-200 rounded-xl p-3 text-sm font-mono h-28 resize-none bg-white/80 focus:bg-white transition-all placeholder-gray-300"
         placeholder={`HB20 2023 PRATA SIL7D35 JOAO SILVA\nFiltro de oleo\nFiltro de ar\nCorreia dentada\nVelas de ignicao`}
         value={text}
+        onPaste={handlePaste}
         onChange={e => handleChange(e.target.value)}
       />
 
@@ -101,6 +103,24 @@ export default function PasteArea({ onImport }) {
           </svg>
           Importar orçamento
         </button>
+
+        <label className="px-4 py-2 bg-indigo-100 text-indigo-700 text-sm rounded-lg hover:bg-indigo-200 font-medium transition-all cursor-pointer">
+          Subir CSV/TSV
+          <input type="file" accept=".csv,.tsv,.txt" className="hidden" onChange={handleFile} />
+        </label>
+
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg hover:bg-blue-200 font-medium transition-all"
+        >
+          Subir planilha
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg hover:bg-blue-200 font-medium transition-all"
+        >
+          Subir planilha
+        </button>
         <button
           onClick={() => fileRef.current?.click()}
           className="px-4 py-2 bg-blue-100 text-blue-700 text-sm rounded-lg hover:bg-blue-200 font-medium transition-all"
@@ -112,6 +132,11 @@ export default function PasteArea({ onImport }) {
           className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium transition-all"
         >Limpar</button>
       </div>
+
+      <p className="mt-2 text-xs text-gray-500">
+        Dica: copie a tabela direto do Excel/Google Sheets e cole aqui para manter as cores de compra.
+      </p>
+      {sheetMsg && <p className="mt-1 text-xs font-medium text-emerald-700">{sheetMsg}</p>}
     </div>
   )
 }

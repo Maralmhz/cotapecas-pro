@@ -43,6 +43,24 @@ export default function QuotationHeader({ quotation, onChange }) {
     return () => window.removeEventListener('paste', onWindowPaste)
   }, [loadImage])
 
+  useEffect(() => {
+    const onWindowPaste = (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          loadImage(item.getAsFile())
+          e.preventDefault()
+          return
+        }
+      }
+    }
+
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+  }, [])
+
   return (
     <div className="glass rounded-xl mb-4 p-4 flex gap-4 items-start">
       {/* Photo area - drag, paste, click, or file */}

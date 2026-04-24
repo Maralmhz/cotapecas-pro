@@ -255,6 +255,41 @@ export default function App() {
     })
   }
 
+
+  const handleSpreadsheetImport = (payload) => {
+    if (!payload?.parts?.length || !payload?.shops?.length) return
+
+    const shopNameToId = new Map()
+    const shops = payload.shops.map((shop, idx) => {
+      const id = Date.now() + idx
+      shopNameToId.set(shop.name, id)
+      return { id, name: shop.name }
+    })
+
+    const prices = {}
+    Object.entries(payload.pricesByShopName || {}).forEach(([key, data]) => {
+      const separatorIndex = key.indexOf('_')
+      if (separatorIndex < 0) return
+      const partId = key.slice(0, separatorIndex)
+      const shopName = key.slice(separatorIndex + 1)
+      const mappedShopId = shopNameToId.get(shopName)
+      if (!mappedShopId) return
+      prices[`${partId}_${mappedShopId}`] = data
+    })
+
+    const quotation = {
+      ...createEmptyQuotation(Date.now()),
+      title: payload.title || 'Cotação importada da planilha',
+      shops,
+      parts: payload.parts,
+      prices,
+    }
+
+    setTabs((prev) => [...prev, quotation])
+    setActiveTab(quotation.id)
+    setActiveView('cotacao')
+  }
+
   const addPart = () => {
     updateQuotation(activeTab, q => ({
       parts: [...q.parts, { id: Date.now(), name: 'Nova Peca', code: '', quantity: '', obs: '' }],
@@ -387,6 +422,7 @@ export default function App() {
         onCloseTab={closeTab}
         onExport={() => setShowExport(true)}
         onChangeView={setActiveView}
+        logoSrc={appLogoSrc}
       />
       {q && (
         <div className="flex-1 p-3 max-w-full overflow-auto">
@@ -427,6 +463,7 @@ export default function App() {
               />
               <PasteArea
                 onImport={handleBudgetImport}
+                onImportSpreadsheet={handleSpreadsheetImport}
               />
               <SpreadsheetTable
                 quotation={q}

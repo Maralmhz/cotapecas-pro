@@ -6,6 +6,7 @@ export default function TabBar({
   onCloseTab,
   onExport,
   onChangeView,
+  logoSrc = `${import.meta.env.BASE_URL}logo.png`,
 }) {
   return (
     <div
